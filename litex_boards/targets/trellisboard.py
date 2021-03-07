@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
-# This file is Copyright (c) 2019 David Shah <dave@ds0.me>
-# License: BSD
+#
+# This file is part of LiteX-Boards.
+#
+# Copyright (c) 2019 David Shah <dave@ds0.me>
+# SPDX-License-Identifier: BSD-2-Clause
 
 import os
 import argparse
@@ -28,8 +31,9 @@ from liteeth.phy.ecp5rgmii import LiteEthPHYRGMII
 
 class _CRG(Module):
     def __init__(self, platform, sys_clk_freq):
-        self.clock_domains.cd_por     = ClockDomain(reset_less=True)
-        self.clock_domains.cd_sys     = ClockDomain()
+        self.rst = Signal()
+        self.clock_domains.cd_por = ClockDomain(reset_less=True)
+        self.clock_domains.cd_sys = ClockDomain()
 
         # # #
 
@@ -46,12 +50,14 @@ class _CRG(Module):
 
         # PLL
         self.submodules.pll = pll = ECP5PLL()
+        self.comb += pll.reset.eq(~por_done | rst | self.rst)
         pll.register_clkin(clk12, 12e6)
         pll.create_clkout(self.cd_sys, sys_clk_freq)
-        self.specials += AsyncResetSynchronizer(self.cd_sys, ~por_done | ~pll.locked | rst)
+
 
 class _CRGSDRAM(Module):
     def __init__(self, platform, sys_clk_freq):
+        self.rst = Signal()
         self.clock_domains.cd_init    = ClockDomain()
         self.clock_domains.cd_por     = ClockDomain(reset_less=True)
         self.clock_domains.cd_sys     = ClockDomain()
@@ -77,6 +83,7 @@ class _CRGSDRAM(Module):
         # PLL
         sys2x_clk_ecsout = Signal()
         self.submodules.pll = pll = ECP5PLL()
+        self.comb += pll.reset.eq(~por_done | rst | self.rst)
         pll.register_clkin(clk12, 12e6)
         pll.create_clkout(self.cd_sys2x_i, 2*sys_clk_freq)
         pll.create_clkout(self.cd_init,   25e6)
@@ -96,9 +103,8 @@ class _CRGSDRAM(Module):
                 i_CLKI    = self.cd_sys2x.clk,
                 i_RST     = self.reset,
                 o_CDIVX   = self.cd_sys.clk),
-            AsyncResetSynchronizer(self.cd_init,   ~por_done | ~pll.locked | rst),
-            AsyncResetSynchronizer(self.cd_sys,    ~por_done | ~pll.locked | rst | self.reset),
-            AsyncResetSynchronizer(self.cd_sys2x,  ~por_done | ~pll.locked | rst | self.reset),
+            AsyncResetSynchronizer(self.cd_sys,    ~pll.locked | self.reset),
+            AsyncResetSynchronizer(self.cd_sys2x,  ~pll.locked | self.reset),
         ]
 
         self.comb += platform.request("dram_vtt_en").eq(1)
@@ -155,22 +161,24 @@ class BaseSoC(SoCCore):
 
 def main():
     parser = argparse.ArgumentParser(description="LiteX SoC on Trellis Board")
-    parser.add_argument("--build", action="store_true", help="Build bitstream")
-    parser.add_argument("--load",  action="store_true", help="Load bitstream")
-    parser.add_argument("--toolchain", default="trellis", help="Gateware toolchain to use, trellis (default) or diamond")
+    parser.add_argument("--build",           action="store_true", help="Build bitstream")
+    parser.add_argument("--load",            action="store_true", help="Load bitstream")
+    parser.add_argument("--toolchain",       default="trellis",   help="FPGA toolchain: trellis (default) or diamond")
+    parser.add_argument("--sys-clk-freq",    default=75e6,        help="System clock frequency (default: 75MHz)")
+    parser.add_argument("--with-ethernet",   action="store_true", help="Enable Ethernet support")
+    sdopts = parser.add_mutually_exclusive_group()        
+    sdopts.add_argument("--with-spi-sdcard", action="store_true", help="Enable SPI-mode SDCard support")
+    sdopts.add_argument("--with-sdcard",     action="store_true", help="Enable SDCard support")
     builder_args(parser)
     soc_sdram_args(parser)
     trellis_args(parser)
-    parser.add_argument("--sys-clk-freq",    default=75e6,        help="system clock frequency (default=75MHz)")
-    parser.add_argument("--with-ethernet",   action="store_true", help="enable Ethernet support")
-    parser.add_argument("--with-spi-sdcard", action="store_true", help="enable SPI-mode SDCard support")
-    parser.add_argument("--with-sdcard",     action="store_true", help="enable SDCard support")
     args = parser.parse_args()
 
-    soc = BaseSoC(sys_clk_freq=int(float(args.sys_clk_freq)),
-        with_ethernet=args.with_ethernet,
-        **soc_sdram_argdict(args))
-    assert not (args.with_spi_sdcard and args.with_sdcard)
+    soc = BaseSoC(
+        sys_clk_freq  = int(float(args.sys_clk_freq)),
+        with_ethernet = args.with_ethernet,
+        **soc_sdram_argdict(args)
+    )
     if args.with_spi_sdcard:
         soc.add_spi_sdcard()
     if args.with_sdcard:

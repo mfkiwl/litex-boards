@@ -1,5 +1,8 @@
-# This file is Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
-# License: BSD
+#
+# This file is part of LiteX-Boards.
+#
+# Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# SPDX-License-Identifier: BSD-2-Clause
 
 from litex.build.generic_platform import *
 from litex.build.xilinx import XilinxPlatform, VivadoProgrammer
@@ -8,6 +11,11 @@ from litex.build.openocd import OpenOCD
 # IOs ----------------------------------------------------------------------------------------------
 
 _io = [
+    # Clk / Rst
+    ("clk100", 0, Pins("E3"), IOStandard("LVCMOS33")),
+    ("cpu_reset", 0, Pins("C12"), IOStandard("LVCMOS33")),
+
+    # Leds
     ("user_led",  0, Pins("H17"), IOStandard("LVCMOS33")),
     ("user_led",  1, Pins("K15"), IOStandard("LVCMOS33")),
     ("user_led",  2, Pins("J13"), IOStandard("LVCMOS33")),
@@ -25,6 +33,7 @@ _io = [
     ("user_led", 14, Pins("V12"), IOStandard("LVCMOS33")),
     ("user_led", 15, Pins("V11"), IOStandard("LVCMOS33")),
 
+    # Switches
     ("user_sw",  0, Pins("J15"), IOStandard("LVCMOS33")),
     ("user_sw",  1, Pins("L16"), IOStandard("LVCMOS33")),
     ("user_sw",  2, Pins("M13"), IOStandard("LVCMOS33")),
@@ -42,22 +51,21 @@ _io = [
     ("user_sw", 14, Pins("U11"), IOStandard("LVCMOS33")),
     ("user_sw", 15, Pins("V10"), IOStandard("LVCMOS33")),
 
+    # Buttons
     ("user_btn", 0, Pins("N17"), IOStandard("LVCMOS33")),
     ("user_btn", 1, Pins("P18"), IOStandard("LVCMOS33")),
     ("user_btn", 2, Pins("P17"), IOStandard("LVCMOS33")),
     ("user_btn", 3, Pins("M17"), IOStandard("LVCMOS33")),
     ("user_btn", 4, Pins("M18"), IOStandard("LVCMOS33")),
 
-    ("clk100", 0, Pins("E3"), IOStandard("LVCMOS33")),
-
-    ("cpu_reset", 0, Pins("C12"), IOStandard("LVCMOS33")),
-
+    # Serial
     ("serial", 0,
         Subsignal("tx", Pins("D4")),
         Subsignal("rx", Pins("C4")),
         IOStandard("LVCMOS33"),
     ),
 
+    # SDCard
     ("spisdcard", 0,
         Subsignal("rst",  Pins("E2")),
         Subsignal("clk",  Pins("B1")),
@@ -67,7 +75,6 @@ _io = [
         Misc("SLEW=FAST"),
         IOStandard("LVCMOS33"),
     ),
-
     ("sdcard", 0,
         Subsignal("rst",  Pins("E2"),          Misc("PULLUP True")),
         Subsignal("data", Pins("C2 E1 F1 D2"), Misc("PULLUP True")),
@@ -78,6 +85,7 @@ _io = [
         IOStandard("LVCMOS33"),
     ),
 
+    # DDR2 SDRAM
     ("ddram", 0,
         Subsignal("a", Pins(
             "M4 P4 M6 T1 L3 P5 M2 N1",
@@ -103,6 +111,7 @@ _io = [
         Misc("SLEW=FAST"),
     ),
 
+    # RMII Ethernet
     ("eth_clocks", 0,
         Subsignal("ref_clk", Pins("D5")),
         IOStandard("LVCMOS33"),
@@ -117,9 +126,19 @@ _io = [
         Subsignal("mdc",     Pins("C9")),
         Subsignal("mdio",    Pins("A9")),
         Subsignal("rx_er",   Pins("C10")),
-        Subsignal("int_n",   Pins("D8")),
+        Subsignal("int_n",   Pins("B8")),
         IOStandard("LVCMOS33")
      ),
+
+    # VGA
+     ("vga", 0,
+        Subsignal("hsync_n", Pins("B11")),
+        Subsignal("vsync_n", Pins("B12")),
+        Subsignal("r", Pins("A4 C5 B4 A3")),
+        Subsignal("g", Pins("A6 B6 A5 C6")),
+        Subsignal("b", Pins("D7 C7 B7 D8")),
+        IOStandard("LVCMOS33")
+    ),
 ]
 
 # Platform -----------------------------------------------------------------------------------------
